@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from 'react-query'
 
 //Components
+import Cart from './Cart/Cart'
 import Item from './Item/Item'
 import Drawer from '@material-ui/core/Drawer'
 import LinearProgress from '@material-ui/core/LinearProgress'
@@ -20,7 +21,7 @@ export type CartItemType = {
   description: string;
   image: string;
   price: number;
-  title:string;
+  title: string;
   amount: number;
 }
 
@@ -30,8 +31,8 @@ const getProducts = async (): Promise<CartItemType[]> =>
 
 
 const App = () => {
-   const [cartOpen, setCartOpen] = useState(false)
-   const [cartItems, setCarItems] = useState([] as CartItemType[])
+  const [cartOpen, setCartOpen] = useState(false)
+  const [cartItems, setCartItems] = useState([] as CartItemType[])
 
   const { data, isLoading, error } = useQuery<CartItemType[]>(
     'products',
@@ -39,32 +40,63 @@ const App = () => {
 
   console.log(data);
 
-  const getTotalItems = (items: CartItemType[]) => null;
+  const getTotalItems = (items: CartItemType[]) =>
+    items.reduce((ack: number, item) => ack + item.amount, 0);
 
-  const handleAddToCart = (clickItem: CartItemType) => null;
+  const handleAddToCart = (clickedItem: CartItemType) => {
+    setCartItems(prev => {
+      //is the item already added in the cart?
+      const isItemInCart = prev.find(item => item.id === clickedItem.id)
 
-  const handleRemoveToCart = () => null;
+      //if existis, i search for this item in the list and increment the amount of it
+      if (isItemInCart) {
+        return prev.map(item => (
+          item.id === clickedItem.id
+            ? { ...item, amount: item.amount + 1 }
+            : item
+        ))
+      }
+      //first time item is added
+      return [...prev, { ...clickedItem, amount: 1 }];
+    });
+  };
 
-  if(isLoading) return<LinearProgress />;//progress bar at the top
-  if(error) return <div>Something went wrong...</div>
+  const handleRemoveToCart = (id: number) => {
+    setCartItems(prev => (
+      prev.reduce((ack, item) => {
+        if (item.id === id) {//if the id is that from the item i shall delete
+          if (item.amount === 1) return ack;//if theres just one item, get it out from the list
+
+          return [...ack, { ...item, amount: item.amount - 1 }]//if there are more than 1, return a new array with minus 1 of this item
+        } else {
+          return [...ack, item];//otherwise, return the item as it is
+        }
+      }, [] as CartItemType[])//the accumulator starts with an empty array and i specify with a CartItemType array
+    ))
+  };
+
+  if (isLoading) return <LinearProgress />;//progress bar at the top
+  if (error) return <div>Something went wrong...</div>
 
   return (
     <Wrapper>
-      <Drawer anchor='right' open={cartOpen} onClose={()=>setCartOpen(false)}>
-        Cart goes here
+      <Drawer anchor='right' open={cartOpen} onClose={() => setCartOpen(false)}>
+        <Cart cartItems={cartItems}
+          addToCart={handleAddToCart}
+          removeFromCart={handleRemoveToCart} />
       </Drawer>
 
-      <StyledButton onClick={()=> setCartOpen(true)}>
+      <StyledButton onClick={() => setCartOpen(true)}>
         <Badge badgeContent={getTotalItems(cartItems)} color="error">
-          <AddShoppingCartIcon/>
+          <AddShoppingCartIcon />
 
         </Badge>
       </StyledButton>
 
       <Grid container spacing={3}>
-        {data?.map(item=>(
+        {data?.map(item => (
           <Grid item key={item.id} xs={12} sm={4}>
-            <Item item={item} handleAddToCart={handleAddToCart}/>
+            <Item item={item} handleAddToCart={handleAddToCart} />
 
           </Grid>
         ))}
